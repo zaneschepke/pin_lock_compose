@@ -14,24 +14,11 @@
 
 ```kotlin
 repositories {
-
-// recommended repo
   mavenCentral()
-
-// alternative repos
-  maven("https://gitea.zaneschepke.com/api/packages/zane/maven")
-  maven {
-            name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/zaneschepke/pin-lock-compose")
-            credentials {
-                username = GITHUB_USERNAME
-                password = GITHUB_TOKEN
-            }
-        }
 }
 
 dependencies {
-  implementation("com.zaneschepke:pin_lock_compose:1.0.3")
+  implementation("com.zaneschepke:pin_lock_compose:1.0.5")
 }
 ```
 

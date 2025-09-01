@@ -116,28 +116,12 @@ publishing {
             }
         }
     }
-
-    repositories {
-        maven {
-            name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/zaneschepke/pin-lock-compose")
-            credentials {
-                username = getLocalProperty("GITHUB_USER")
-                password = getLocalProperty("GITHUB_TOKEN")
-            }
-        }
-        maven {
-            name = "sonatype"
-            url = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
-            credentials {
-                username = getLocalProperty("MAVEN_CENTRAL_USER")
-                password = getLocalProperty("MAVEN_CENTRAL_PASS")
-            }
-        }
-    }
 }
 
 signing {
-    useGpgCmd()
+    useInMemoryPgpKeys(
+        getLocalProperty("SECRET_KEY") ?: System.getenv("SECRET_KEY"),
+        getLocalProperty("PASSWORD") ?: System.getenv("PASSWORD")
+    )
     sign(publishing.publications)
 }

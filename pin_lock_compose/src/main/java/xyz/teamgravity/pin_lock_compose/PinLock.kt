@@ -10,38 +10,24 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.material.ripple.RippleAlpha
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.constraintlayout.compose.ChainStyle
-import androidx.constraintlayout.compose.ConstrainScope
-import androidx.constraintlayout.compose.ConstrainedLayoutReference
-import androidx.constraintlayout.compose.ConstraintLayout
-import androidx.constraintlayout.compose.ConstraintLayoutScope
-import androidx.constraintlayout.compose.Dimension
+import androidx.constraintlayout.compose.*
 
 /**
  * Covers the whole screen and displays the PinLock. This composable makes the user enter pin if it already exists. If there is
@@ -73,6 +59,24 @@ fun PinLock(
     val numbers = rememberMutableStateListOf<Int>()
     val pinExists = remember { PinManager.pinExists() }
 
+    if (numbers.size == PinConst.PIN_LENGTH) {
+        LaunchedEffect(Unit) {
+            if (pinExists) {
+                if (PinManager.checkPin(numbers)) {
+                    onPinCorrect()
+                } else {
+                    animate = !animate
+                    onPinIncorrect()
+                }
+            } else {
+                PinManager.savePin(numbers)
+                onPinCreated()
+            }
+            numbers.clear()
+        }
+    }
+
+
     BasePinLock(
         title = {
             title(pinExists)
@@ -83,23 +87,6 @@ fun PinLock(
         numbers = numbers,
         onNumberChange = { number ->
             if (numbers.size < PinConst.PIN_LENGTH) numbers.add(number)
-
-            if (numbers.size == PinConst.PIN_LENGTH) {
-                if (PinManager.pinExists()) {
-                    if (PinManager.checkPin(numbers)) {
-                        onPinCorrect()
-                        numbers.clear()
-                    } else {
-                        animate = !animate
-                        onPinIncorrect()
-                        numbers.clear()
-                    }
-                } else {
-                    PinManager.savePin(numbers)
-                    onPinCreated()
-                    numbers.clear()
-                }
-            }
         },
         onBackspace = {
             numbers.removeLastOrNull()
@@ -403,6 +390,7 @@ private fun PinIndicator(
  * @param constrain
  * Constrain block to construct composable using ConstraintLayout.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ConstraintLayoutScope.NumberButton(
     number: Int,
@@ -412,20 +400,48 @@ private fun ConstraintLayoutScope.NumberButton(
     reference: ConstrainedLayoutReference,
     constrain: ConstrainScope.() -> Unit = {},
 ) {
-    Button(
-        onClick = {
-            onClick(number)
-        },
-        border = BorderStroke(color = textColor, width = 1.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = backgroundColor),
-        modifier = Modifier
-            .size(90.dp)
-            .padding(10.dp)
-            .constrainAs(reference, constrain)
-    ) {
-        Text(
-            text = number.toString(),
-            color = textColor,
+    val hapticFeedback = LocalHapticFeedback.current
+    var isFocused by remember { mutableStateOf(false) }
+
+    CompositionLocalProvider(
+        LocalRippleConfiguration provides RippleConfiguration(
+            color = textColor.copy(alpha = 0.4f),  // Pronounced ripple color
+            rippleAlpha = RippleAlpha(0.3f, 0.5f, 0.3f, 0.5f)
         )
+    ) {
+        Button(
+            onClick = {
+                onClick(number)
+                hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+              },
+            shape = CircleShape,
+            border = BorderStroke(
+                width = if (isFocused) 2.dp else 1.dp,
+                color = if (isFocused) textColor.copy(alpha = 0.8f) else textColor
+            ),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (isFocused) textColor.copy(alpha = 0.1f) else backgroundColor,
+                contentColor = textColor
+            ),
+            elevation = ButtonDefaults.buttonElevation(
+                defaultElevation = 0.dp,
+                focusedElevation = 4.dp
+            ),
+            modifier = Modifier
+                .size(90.dp)
+                .padding(10.dp)
+                .constrainAs(reference, constrain)
+                .focusable()
+                .onFocusChanged { focusState ->
+                    isFocused = focusState.isFocused
+                }
+                .scale(if (isFocused) 1.1f else 1f)
+        ) {
+            Text(
+                text = number.toString(),
+                color = textColor,
+                style = MaterialTheme.typography.headlineMedium
+            )
+        }
     }
 }

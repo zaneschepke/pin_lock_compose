@@ -9,8 +9,9 @@ ui = "1.7.3"
 espressoCore = "3.6.1"
 androidx-junit = "1.2.1"
 #plugins
-agp = "8.7.0"
+agp = "8.11.0"
 kotlin = "2.0.21"
+nmcp = "1.0.3"
 
 
 [libraries]
@@ -33,3 +34,4 @@ android-library = { id = "com.android.library", version.ref = "agp" }
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+nmcp = { id = "com.gradleup.nmcp.aggregation", version.ref = "nmcp" }
