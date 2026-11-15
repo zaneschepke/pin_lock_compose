@@ -1,8 +1,10 @@
 package xyz.teamgravity.pin_lock_compose
 
-import androidx.compose.material.icons.materialIcon
-import androidx.compose.material.icons.materialPath
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.path
+import androidx.compose.ui.unit.dp
 
 /**
  * BackSpace image.
@@ -12,8 +14,15 @@ internal val Backspace: ImageVector
         if (_backspace != null) {
             return _backspace!!
         }
-        _backspace = materialIcon(name = "Filled.Backspace") {
-            materialPath {
+        _backspace = ImageVector.Builder(
+            name = "Filled.Backspace",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f,
+            autoMirror = true,
+        ).apply {
+            path(fill = SolidColor(Color.Black)) {
                 moveTo(22.0f, 3.0f)
                 lineTo(7.0f, 3.0f)
                 curveToRelative(-0.69f, 0.0f, -1.23f, 0.35f, -1.59f, 0.88f)
@@ -40,7 +49,7 @@ internal val Backspace: ImageVector
                 lineTo(19.0f, 15.59f)
                 close()
             }
-        }
+        }.build()
         return _backspace!!
     }
 

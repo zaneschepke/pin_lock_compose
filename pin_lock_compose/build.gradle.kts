@@ -2,9 +2,9 @@ import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     `maven-publish`
+    alias(libs.plugins.nmcp)
     signing
 }
 
@@ -27,10 +27,6 @@ android {
 
     buildFeatures {
         compose = true
-    }
-
-    composeOptions {
-        kotlinCompilerExtensionVersion = Constants.COMPILER_VERSION
     }
 
     packaging {
@@ -68,8 +64,6 @@ dependencies {
     // compose material3
     implementation(libs.androidx.material3)
 
-    // compose constraint layout
-    implementation(libs.androidx.constraintlayout.compose)
     // lifecycle
     implementation(libs.androidx.lifecycle.runtime.ktx)
 
