@@ -1,0 +1,2 @@
+What's new:
+- Updated UI animations and options
