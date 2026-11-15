@@ -18,7 +18,7 @@ repositories {
 }
 
 dependencies {
-  implementation("com.zaneschepke:pin_lock_compose:1.0.5")
+  implementation("com.zaneschepke:pin_lock_compose:1.1.0")
 }
 ```
 

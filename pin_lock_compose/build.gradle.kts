@@ -1,19 +1,16 @@
-import java.util.Properties
-
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.compose)
-    `maven-publish`
-    alias(libs.plugins.nmcp)
+    alias(libs.plugins.vanniktech.mavenPublish)
     signing
 }
 
 android {
-    namespace = "${Constants.PACKAGE}.pin_lock_compose"
-    compileSdk = Constants.COMPILE_SDK
+    namespace = "xyz.teamgravity.pin_lock_compose"
+    compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
-        minSdk = Constants.MIN_SDK
+        minSdk = libs.versions.android.minSdk.get().toInt()
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
     }
@@ -37,12 +34,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-    publishing {
-        singleVariant("release") {
-            withJavadocJar()
-            withSourcesJar()
-        }
     }
 }
 
@@ -71,51 +62,54 @@ dependencies {
     implementation(libs.androidx.security.crypto)
 }
 
-publishing {
-    publications {
-        register<MavenPublication>("release") {
-            groupId = "com.zaneschepke"
-            artifactId = "pin_lock_compose"
-            version = providers.gradleProperty("pinVersionName").get()
-            afterEvaluate {
-                from(components["release"])
-            }
-            pom {
-                name.set("Pin Lock Compose")
-                description.set("Light library that is beautiful Pin Lock screen for Jetpack Compose. The library handles saving pin in Encrypted file. Integration is very easy and fast.")
-                url.set("https://github.com/zaneschepke/pin_lock_compose")
-
-                licenses {
-                    license {
-                        name.set("The Apache Software License, Version 2.0")
-                        url.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
-                        distribution.set("repo")
-                    }
-                }
-                scm {
-                    connection.set("scm:git:https://github.com/zaneschepke/pin_lock_compose")
-                    developerConnection.set("scm:git:https://github.com/zaneschepke/pin_lock_compose")
-                    url.set("https://github.com/zaneschepke/pin_lock_compose")
-                }
-                developers {
-                    organization {
-                        name.set("Zane Schepke")
-                        url.set("https://zaneschepke.com")
-                    }
-                    developer {
-                        name.set("Zane Schepke")
-                        email.set("support@zaneschepke.com")
-                    }
-                }
-            }
-        }
+signing {
+    val inMemoryKey =
+        providers
+            .gradleProperty("signingInMemoryKey")
+            .orElse(providers.gradleProperty("signing.inMemoryKey"))
+    val password =
+        providers
+            .gradleProperty("signingInMemoryKeyPassword")
+            .orElse(providers.gradleProperty("signing.password"))
+            .orElse(providers.environmentVariable("GPG_PASS"))
+    // In-memory PGP signing uses BouncyCastle and produces .asc files Maven Central
+    // rejects. Use gpg on CI instead.
+    val useGpgCmd = providers.environmentVariable("SIGNING_USE_GPG_CMD").orNull == "true"
+    if (useGpgCmd) {
+        extra["signing.gnupg.passphrase"] = password.orNull.orEmpty()
+        useGpgCmd()
+    } else if (inMemoryKey.isPresent) {
+        useInMemoryPgpKeys(inMemoryKey.get(), password.orNull.orEmpty())
     }
 }
 
-signing {
-    useInMemoryPgpKeys(
-        getLocalProperty("SECRET_KEY") ?: System.getenv("SECRET_KEY"),
-        getLocalProperty("PASSWORD") ?: System.getenv("PASSWORD")
-    )
-    sign(publishing.publications)
+mavenPublishing {
+    publishToMavenCentral()
+    signAllPublications()
+    coordinates(group.toString(), "pin_lock_compose", version.toString())
+    pom {
+        name = "Pin Lock Compose"
+        description = "Light library that is beautiful Pin Lock screen for Jetpack Compose. The library handles saving pin in Encrypted file. Integration is very easy and fast."
+        url = "https://github.com/zaneschepke/pin_lock_compose"
+        licenses {
+            license {
+                name = "The Apache Software License, Version 2.0"
+                url = "https://www.apache.org/licenses/LICENSE-2.0.txt"
+                distribution = "repo"
+            }
+        }
+        developers {
+            developer {
+                id = "zaneschepke"
+                name = "Zane Schepke"
+                url = "https://github.com/zaneschepke"
+                email = "support@zaneschepke.com"
+            }
+        }
+        scm {
+            connection = "scm:git:git://github.com/zaneschepke/pin_lock_compose.git"
+            developerConnection = "scm:git:ssh://git@github.com/zaneschepke/pin_lock_compose.git"
+            url = "https://github.com/zaneschepke/pin_lock_compose"
+        }
+    }
 }

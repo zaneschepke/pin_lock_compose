@@ -1,0 +1,90 @@
+name: publish
+
+permissions:
+  contents: write
+
+on:
+  push:
+    tags:
+      - "[0-9]*.[0-9]*.[0-9]*"
+
+env:
+  JAVA_VERSION: "21"
+  JAVA_DISTRIBUTION: temurin
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USER }}
+      ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASS }}
+      ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.GPG_SECRET_KEY }}
+      ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.GPG_PASS }}
+      GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Verify tag is x.x.x and matches catalog
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          if [[ ! "${TAG}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Tag '${TAG}' must be x.x.x"
+            exit 1
+          fi
+          LIB_VERSION="$(sed -nE 's/^lib = \"([0-9]+\.[0-9]+\.[0-9]+)\"/\1/p' gradle/libs.versions.toml)"
+          if [[ -z "${LIB_VERSION}" ]]; then
+            echo "Could not read lib version from gradle/libs.versions.toml"
+            exit 1
+          fi
+          if [[ "${TAG}" != "${LIB_VERSION}" ]]; then
+            echo "Tag '${TAG}' does not match catalog lib = \"${LIB_VERSION}\""
+            exit 1
+          fi
+          echo "Publishing ${LIB_VERSION}"
+
+      - name: Verify Gradle Wrapper
+        uses: gradle/actions/wrapper-validation@v6
+
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v5
+        with:
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: gradle
+          check-latest: false
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Import GPG key
+        env:
+          GPG_SECRET_KEY: ${{ secrets.GPG_SECRET_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.gnupg
+          chmod 700 ~/.gnupg
+          printf '%s\n' "${GPG_SECRET_KEY}" | gpg --batch --import
+          echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+          echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
+          gpgconf --kill gpg-agent || true
+          gpg --batch --list-secret-keys --keyid-format LONG
+
+      - name: Publish to Maven Central
+        env:
+          SIGNING_USE_GPG_CMD: "true"
+          GPG_PASS: ${{ secrets.GPG_PASS }}
+        run: >-
+          ./gradlew :pin_lock_compose:assembleRelease :pin_lock_compose:publishToMavenCentral
+          --no-configuration-cache --stacktrace --no-daemon
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "${GITHUB_REF_NAME}" \
+            --generate-notes \
+            pin_lock_compose/build/outputs/aar/pin_lock_compose-release.aar
